@@ -4,15 +4,15 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "choc_MessageLoop.h"
 #include "choc_DesktopWindow.h"
-#include "choc_WebView.h"
 
 /*
 I don't like the Juce AudioSources stuff, so I did this low level audio callback class
 instead, which will be used used by the AudioDeviceManager.
 
-This inherits from timer only to confirm that async Juce stuff like Timer does work
+This also inherits from timer only to confirm that async Juce stuff like Timer does work
 under the Choc event loop, it is not generally required.
 */
+
 class MyAudioCallback : public juce::AudioIODeviceCallback, public juce::Timer
 {
   public:
@@ -33,8 +33,12 @@ class MyAudioCallback : public juce::AudioIODeviceCallback, public juce::Timer
             }
         }
     }
-    void audioDeviceAboutToStart(juce::AudioIODevice *device) override {}
+    // equivalent to AudioSource/AudioProcessor::prepareToPlay
+    void audioDeviceAboutToStart(juce::AudioIODevice * /*device*/) override {}
+
     void audioDeviceStopped() override {}
+
+  private:
     juce::Random m_rng;
 };
 
