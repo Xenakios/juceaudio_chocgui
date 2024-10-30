@@ -18,11 +18,10 @@ class MyAudioCallback : public juce::AudioIODeviceCallback, public juce::Timer
   public:
     MyAudioCallback() { startTimer(1000); }
     void timerCallback() override { DBG("Timer callback"); }
-    void
-    audioDeviceIOCallbackWithContext(const float *const */*inputChannelData*/, int /*numInputChannels*/,
-                                     float *const *outputChannelData, int numOutputChannels,
-                                     int numSamples,
-                                     const juce::AudioIODeviceCallbackContext &/*context*/) override
+    void audioDeviceIOCallbackWithContext(
+        const float *const * /*inputChannelData*/, int /*numInputChannels*/,
+        float *const *outputChannelData, int numOutputChannels, int numSamples,
+        const juce::AudioIODeviceCallbackContext & /*context*/) override
     {
         // generate some low level noise into the output channels
         for (int i = 0; i < numSamples; ++i)
@@ -39,25 +38,24 @@ class MyAudioCallback : public juce::AudioIODeviceCallback, public juce::Timer
     juce::Random m_rng;
 };
 
-int main(int /*argc*/, char */*argv*/[])
+int main(int /*argc*/, char * /*argv*/[])
 {
-    // This doesn't really do much else than ensure that the Juce MessageManager instance will be around,
-    // doesn't imply Juce GUI will be used/needs to be used
+    // This doesn't really do much else than ensure that the Juce MessageManager instance will be
+    // around, doesn't imply Juce GUI will be used/needs to be used
     juce::ScopedJuceInitialiser_GUI guiInit;
-    
-    // Might be safer to heap allocate the manager and callback, but stack allocated works
-    // for this simple example
-    juce::AudioDeviceManager mana;
-    mana.initialiseWithDefaultDevices(0, 2);
-    MyAudioCallback audioCallback;
-    mana.addAudioCallback(&audioCallback);
-    
-    // Create a Choc based desktop window and event loop. 
+
+    auto mana = std::make_unique<juce::AudioDeviceManager>();
+    mana->initialiseWithDefaultDevices(0, 2);
+    auto audioCallback = std::make_unique<MyAudioCallback>();
+    mana->addAudioCallback(audioCallback.get());
+
+    // Create a Choc based desktop window and event loop.
     // Audio keeps playing until the window is closed.
     choc::messageloop::initialise();
-    choc::ui::DesktopWindow dwin({50, 50, 400, 200});
-    dwin.setWindowTitle("Choc window");
-    dwin.windowClosed = []() { choc::messageloop::stop(); };
+    auto dwin = std::make_unique<choc::ui::DesktopWindow>(choc::ui::Bounds{50, 50, 400, 200});
+    dwin->setWindowTitle("Choc window");
+    dwin->windowClosed = []() { choc::messageloop::stop(); };
     choc::messageloop::run();
+    mana->removeAudioCallback(audioCallback.get());
     return 0;
 }
