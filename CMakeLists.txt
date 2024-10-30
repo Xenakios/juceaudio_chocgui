@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(CONSOLE_APP_EXAMPLE VERSION 0.0.1)
 # you need to make this point to your Juce location
-add_subdirectory(../JUCE ignore EXCLUDE_FROM_ALL)                    # If you've put JUCE in a subdirectory called JUCE
+add_subdirectory(../JUCE ignore EXCLUDE_FROM_ALL)
 juce_add_console_app(ConsoleAppExample
     PRODUCT_NAME "JuceChocExample")     # The name of the final executable, which can differ from the target name
 

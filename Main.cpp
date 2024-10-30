@@ -1,3 +1,4 @@
+#include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_audio_devices/juce_audio_devices.h"
 #include "juce_events/juce_events.h"
 #include <juce_core/juce_core.h>
@@ -18,15 +19,20 @@ class MyAudioCallback : public juce::AudioIODeviceCallback, public juce::Timer
   public:
     MyAudioCallback() { startTimer(1000); }
     void timerCallback() override { DBG("Timer callback"); }
+
+    // equivalent to AudioSource::getNextAudioBlock/AudioProcessor::processBlock
     void audioDeviceIOCallbackWithContext(
         const float *const * /*inputChannelData*/, int /*numInputChannels*/,
         float *const *outputChannelData, int numOutputChannels, int numSamples,
         const juce::AudioIODeviceCallbackContext & /*context*/) override
     {
-        // generate some low level noise into the output channels
+        // generate some white noise into the output channels
+
+        // cache the value locally so we don't have to access the atomic inside the loop
+        float gain = m_gain.load();
         for (int i = 0; i < numSamples; ++i)
         {
-            float outSample = juce::jmap(m_rng.nextFloat(), 0.0f, 1.0f, -0.05f, 0.05f);
+            float outSample = gain * juce::jmap(m_rng.nextFloat(), 0.0f, 1.0f, -1.0f, 1.0f);
             for (int j = 0; j < numOutputChannels; ++j)
             {
                 outputChannelData[j][i] = outSample;
@@ -36,10 +42,18 @@ class MyAudioCallback : public juce::AudioIODeviceCallback, public juce::Timer
     // equivalent to AudioSource/AudioProcessor::prepareToPlay
     void audioDeviceAboutToStart(juce::AudioIODevice * /*device*/) override {}
 
+    // equivalent to AudioSource/AudioProcessor::releaseResources
     void audioDeviceStopped() override {}
+
+    void setVolume(float decibels)
+    {
+        decibels = juce::jlimit(-100.0f, 0.0f, decibels);
+        m_gain.store(juce::Decibels::decibelsToGain(decibels));
+    }
 
   private:
     juce::Random m_rng;
+    std::atomic<float> m_gain{0.0f};
 };
 
 int main(int /*argc*/, char * /*argv*/[])
@@ -51,6 +65,7 @@ int main(int /*argc*/, char * /*argv*/[])
     auto mana = std::make_unique<juce::AudioDeviceManager>();
     mana->initialiseWithDefaultDevices(0, 2);
     auto audioCallback = std::make_unique<MyAudioCallback>();
+    audioCallback->setVolume(-36.0f);
     mana->addAudioCallback(audioCallback.get());
 
     // Create a Choc based desktop window and start the event loop.
