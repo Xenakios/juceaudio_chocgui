@@ -43,7 +43,7 @@ class MyAudioCallback : public juce::AudioIODeviceCallback,
         // Generate some white noise into the output channels.
         for (int i = 0; i < numSamples; ++i)
         {
-            float outSample = gain * juce::jmap(m_rng.nextFloat(), 0.0f, 1.0f, -1.0f, 1.0f);
+            float outSample = (-1.0f + 2.0f * m_rng.nextFloat()) * gain;
             for (int j = 0; j < numOutputChannels; ++j)
             {
                 outputChannelData[j][i] = outSample;
