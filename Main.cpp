@@ -48,9 +48,9 @@ class MyAudioCallback : public juce::AudioIODeviceCallback,
             }
         }
         m_samplePosition += numSamples;
-        if (m_samplePosition >= 88200)
+        if (m_samplePosition >= m_asyncUpdaterIntervalSamples)
         {
-            m_samplePosition = 0;
+            m_samplePosition -= m_asyncUpdaterIntervalSamples;
             // Note : it's controversial whether AsyncUpdater should be used in the audio thread or
             // not. You may not want to do this in production code.
             triggerAsyncUpdate();
@@ -71,7 +71,8 @@ class MyAudioCallback : public juce::AudioIODeviceCallback,
   private:
     juce::Random m_rng;
     std::atomic<float> m_gain{0.0f};
-    int64_t m_samplePosition = 0;
+    int m_samplePosition = 0;
+    int m_asyncUpdaterIntervalSamples = 88200;
 };
 
 int main(int /*argc*/, char * /*argv*/[])
