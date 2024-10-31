@@ -20,11 +20,13 @@ class MyAudioCallback : public juce::AudioIODeviceCallback,
 {
   public:
     MyAudioCallback() { startTimer(1000); }
+    // Implements juce::Timer
     void timerCallback() override
     {
         jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
         DBG("Timer callback");
     }
+    // Implements juce::AsyncUpdater
     void handleAsyncUpdate() override
     {
         jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
@@ -57,7 +59,12 @@ class MyAudioCallback : public juce::AudioIODeviceCallback,
         }
     }
     // Equivalent to AudioSource/AudioProcessor::prepareToPlay
-    void audioDeviceAboutToStart(juce::AudioIODevice * /*device*/) override {}
+    void audioDeviceAboutToStart(juce::AudioIODevice *device) override
+    {
+        m_samplePosition = 0;
+        // Trigger AsyncUpdater every 2 seconds
+        m_asyncUpdaterIntervalSamples = static_cast<int>(device->getCurrentSampleRate() * 2.0f);
+    }
 
     // Equivalent to AudioSource/AudioProcessor::releaseResources
     void audioDeviceStopped() override {}
@@ -72,7 +79,7 @@ class MyAudioCallback : public juce::AudioIODeviceCallback,
     juce::Random m_rng;
     std::atomic<float> m_gain{0.0f};
     int m_samplePosition = 0;
-    int m_asyncUpdaterIntervalSamples = 88200;
+    int m_asyncUpdaterIntervalSamples = 44100;
 };
 
 int main(int /*argc*/, char * /*argv*/[])
