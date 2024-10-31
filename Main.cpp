@@ -10,26 +10,35 @@
 I don't like the Juce AudioSources stuff, so I did this low level audio callback class
 instead, which will be used used by the AudioDeviceManager.
 
-This also inherits from timer only to confirm that async Juce stuff like Timer does work
-under the Choc event loop, it is not generally required.
+This also inherits from Timer and AsyncUpdater only to confirm that the async Juce stuff
+does work under the Choc event loop, it is not generally required.
 */
 
-class MyAudioCallback : public juce::AudioIODeviceCallback, public juce::Timer
+class MyAudioCallback : public juce::AudioIODeviceCallback,
+                        public juce::Timer,
+                        public juce::AsyncUpdater
 {
   public:
     MyAudioCallback() { startTimer(1000); }
-    void timerCallback() override { DBG("Timer callback"); }
-
-    // equivalent to AudioSource::getNextAudioBlock/AudioProcessor::processBlock
+    void timerCallback() override
+    {
+        jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+        DBG("Timer callback");
+    }
+    void handleAsyncUpdate() override
+    {
+        jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+        DBG("AsyncUpdater callback");
+    }
+    // Equivalent to AudioSource::getNextAudioBlock/AudioProcessor::processBlock
     void audioDeviceIOCallbackWithContext(
         const float *const * /*inputChannelData*/, int /*numInputChannels*/,
         float *const *outputChannelData, int numOutputChannels, int numSamples,
         const juce::AudioIODeviceCallbackContext & /*context*/) override
     {
-        // generate some white noise into the output channels
-
-        // cache the value locally so we don't have to access the atomic inside the loop
+        // Cache the value locally so we don't have to access the atomic inside the loop
         float gain = m_gain.load();
+        // Generate some white noise into the output channels.
         for (int i = 0; i < numSamples; ++i)
         {
             float outSample = gain * juce::jmap(m_rng.nextFloat(), 0.0f, 1.0f, -1.0f, 1.0f);
@@ -38,11 +47,19 @@ class MyAudioCallback : public juce::AudioIODeviceCallback, public juce::Timer
                 outputChannelData[j][i] = outSample;
             }
         }
+        m_samplePosition += numSamples;
+        if (m_samplePosition >= 88200)
+        {
+            m_samplePosition = 0;
+            // Note : it's controversial whether AsyncUpdater should be used in the audio thread or
+            // not. You may not want to do this in production code.
+            triggerAsyncUpdate();
+        }
     }
-    // equivalent to AudioSource/AudioProcessor::prepareToPlay
+    // Equivalent to AudioSource/AudioProcessor::prepareToPlay
     void audioDeviceAboutToStart(juce::AudioIODevice * /*device*/) override {}
 
-    // equivalent to AudioSource/AudioProcessor::releaseResources
+    // Equivalent to AudioSource/AudioProcessor::releaseResources
     void audioDeviceStopped() override {}
 
     void setVolume(float decibels)
@@ -54,6 +71,7 @@ class MyAudioCallback : public juce::AudioIODeviceCallback, public juce::Timer
   private:
     juce::Random m_rng;
     std::atomic<float> m_gain{0.0f};
+    int64_t m_samplePosition = 0;
 };
 
 int main(int /*argc*/, char * /*argv*/[])
