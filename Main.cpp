@@ -11,7 +11,7 @@ I don't like the Juce AudioSources stuff, so I did this low level audio callback
 instead, which will be used used by the AudioDeviceManager.
 
 This also inherits from Timer and AsyncUpdater only to confirm that the async Juce stuff
-does work under the Choc event loop, it is not generally required.
+does work under the Choc message loop, it is not generally required.
 */
 
 class MyAudioCallback : public juce::AudioIODeviceCallback,
@@ -86,7 +86,7 @@ int main(int /*argc*/, char * /*argv*/[])
     audioCallback->setVolume(-36.0f);
     mana->addAudioCallback(audioCallback.get());
 
-    // Create a Choc based desktop window and start the event loop.
+    // Create a Choc based desktop window and start the message loop.
     // Audio keeps playing until the window is closed.
     choc::messageloop::initialise();
     auto dwin = std::make_unique<choc::ui::DesktopWindow>(choc::ui::Bounds{50, 50, 400, 200});
